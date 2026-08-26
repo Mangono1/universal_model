@@ -1,23 +1,21 @@
 ﻿"""
 Universal Model Framework.
 
-A universal neural-model framework built on top of CPUTorch.
+A lightweight CPU-first neural network framework.
 """
-
-__version__ = "0.1.0"
-__author__ = "Frandika Imam Arifin"
-
 
 from .core.module import Module
 from .core.parameter import Parameter
 from .core.tensor_ops import TensorOps
 
-from .models.config import ModelConfig
-from .models.base import BaseModel
-
 from .layers.linear import Linear
 from .layers.activation import ReLU
 from .layers.sequential import Sequential
+
+from .losses.mse import MSELoss
+
+from .optim.optimizer import Optimizer
+from .optim.sgd import SGD
 
 from .init.initializers import (
     zeros,
@@ -32,7 +30,8 @@ from .init.initializers import (
     initialize,
 )
 
-from .losses.mse import MSELoss
+from .training.history import TrainingHistory
+from .training.trainer import Trainer
 
 
 __all__ = [
@@ -40,12 +39,14 @@ __all__ = [
     "Parameter",
     "TensorOps",
 
-    "ModelConfig",
-    "BaseModel",
-
     "Linear",
     "ReLU",
     "Sequential",
+
+    "MSELoss",
+
+    "Optimizer",
+    "SGD",
 
     "zeros",
     "ones",
@@ -58,12 +59,6 @@ __all__ = [
     "kaiming_normal",
     "initialize",
 
-    "MSELoss",
+    "TrainingHistory",
+    "Trainer",
 ]
-
-from .optim.optimizer import Optimizer
-from .optim.sgd import SGD
-
-
-__all__.extend(["Optimizer", "SGD"])
-
