@@ -1,55 +1,68 @@
 ﻿"""
-Training engine for Universal Model Framework.
+Universal Model Framework - Training Engine.
+
+Supports both direct tensor training and DataLoader-based training.
+
+Direct:
+    trainer.fit(x, target, epochs=50)
+
+DataLoader:
+    trainer.fit(loader, epochs=50)
 """
 
-from ..core.module import Module
-from ..losses.mse import MSELoss
-from ..optim.sgd import SGD
-
-from .history import TrainingHistory
+from ..data.dataloader import DataLoader
 
 
 class Trainer:
     """
-    Basic supervised training engine.
+    Universal training engine.
 
-    Training cycle:
+    Supports:
 
-        forward
-        loss
-        zero_grad
-        backward
-        optimizer.step
+        trainer.fit(
+            inputs,
+            targets,
+            epochs=10,
+        )
+
+    and:
+
+        trainer.fit(
+            dataloader,
+            epochs=10,
+        )
     """
 
     def __init__(
         self,
         model,
-        optimizer=None,
-        loss_fn=None,
+        optimizer,
+        loss_fn,
         verbose=True,
     ):
-        if not isinstance(model, Module):
-            raise TypeError(
-                "Trainer model must inherit from Module."
+        if model is None:
+            raise ValueError(
+                "model must not be None."
+            )
+
+        if optimizer is None:
+            raise ValueError(
+                "optimizer must not be None."
+            )
+
+        if loss_fn is None:
+            raise ValueError(
+                "loss_fn must not be None."
             )
 
         self.model = model
-        self.loss_fn = loss_fn or MSELoss()
+        self.optimizer = optimizer
+        self.loss_fn = loss_fn
         self.verbose = bool(verbose)
 
-        if optimizer is None:
-            optimizer = SGD(
-                model,
-                lr=0.001,
-            )
-
-        self.optimizer = optimizer
-        self.history = TrainingHistory()
-
-    def train_step(self, inputs, targets):
+    def _train_batch(self, inputs, targets):
         """
-        Execute one complete training step.
+        Execute one optimization step.
         """
 
         self.optimizer.zero_grad()
@@ -65,27 +78,21 @@ class Trainer:
 
         updated = self.optimizer.step()
 
-        return loss, prediction, updated
+        return loss, updated
 
-    def fit(
+    def _fit_direct(
         self,
         inputs,
         targets,
-        epochs=1,
+        epochs,
+        history,
     ):
         """
-        Train the model for a number of epochs.
+        Train using direct input/target tensors.
         """
 
-        if epochs <= 0:
-            raise ValueError(
-                "epochs must be greater than zero."
-            )
-
-        self.model.train()
-
         for epoch in range(1, epochs + 1):
-            loss, prediction, updated = self.train_step(
+            loss, updated = self._train_batch(
                 inputs,
                 targets,
             )
@@ -94,9 +101,10 @@ class Trainer:
                 loss.data[0]
             )
 
-            self.history.record(
-                epoch,
-                loss_value,
+            history.append(
+                epoch=epoch,
+                loss=loss_value,
+                updated=updated,
             )
 
             if self.verbose:
@@ -106,28 +114,152 @@ class Trainer:
                     f"Updated: {updated}"
                 )
 
-        return self.history
+        return history
 
-    def predict(self, inputs):
+    def _fit_loader(
+        self,
+        loader,
+        epochs,
+        history,
+    ):
         """
-        Run inference without changing parameters.
-        """
-
-        return self.model(inputs)
-
-    def latest_loss(self):
-        """
-        Return latest training loss.
+        Train using a DataLoader.
         """
 
-        return self.history.latest_loss()
+        for epoch in range(1, epochs + 1):
+            epoch_loss = 0.0
+            batch_count = 0
+            total_updated = 0
+
+            for inputs, targets in loader:
+                loss, updated = self._train_batch(
+                    inputs,
+                    targets,
+                )
+
+                epoch_loss += float(
+                    loss.data[0]
+                )
+
+                batch_count += 1
+                total_updated += updated
+
+            if batch_count == 0:
+                raise ValueError(
+                    "DataLoader produced zero batches."
+                )
+
+            average_loss = (
+                epoch_loss / batch_count
+            )
+
+            history.append(
+                epoch=epoch,
+                loss=average_loss,
+                updated=total_updated,
+            )
+
+            if self.verbose:
+                print(
+                    f"Epoch {epoch:03d} | "
+                    f"Loss: {average_loss:.6f} | "
+                    f"Batches: {batch_count} | "
+                    f"Updated: {total_updated}"
+                )
+
+        return history
+
+    def fit(
+        self,
+        inputs,
+        targets=None,
+        epochs=1,
+        history=None,
+    ):
+        """
+        Train the model.
+
+        Two supported forms:
+
+        1. Direct tensors:
+
+            trainer.fit(
+                x,
+                y,
+                epochs=50,
+            )
+
+        2. DataLoader:
+
+            trainer.fit(
+                loader,
+                epochs=50,
+            )
+        """
+
+        if not isinstance(epochs, int):
+            raise TypeError(
+                "epochs must be an integer."
+            )
+
+        if epochs <= 0:
+            raise ValueError(
+                "epochs must be greater than zero."
+            )
+
+        if history is None:
+            from .history import TrainingHistory
+
+            history = TrainingHistory()
+
+        if isinstance(inputs, DataLoader):
+            if targets is not None:
+                raise ValueError(
+                    "targets must be omitted when "
+                    "training with DataLoader."
+                )
+
+            return self._fit_loader(
+                loader=inputs,
+                epochs=epochs,
+                history=history,
+            )
+
+        if targets is None:
+            raise ValueError(
+                "targets are required when training "
+                "without a DataLoader."
+            )
+
+        return self._fit_direct(
+            inputs=inputs,
+            targets=targets,
+            epochs=epochs,
+            history=history,
+        )
+
+    def train_batch(self, inputs, targets):
+        """
+        Train exactly one batch.
+        """
+
+        loss, updated = self._train_batch(
+            inputs,
+            targets,
+        )
+
+        return {
+            "loss": float(loss.data[0]),
+            "updated": updated,
+        }
 
     def __repr__(self):
         return (
             f"Trainer("
             f"model={self.model.__class__.__name__}, "
-            f"optimizer={self.optimizer}, "
-            f"loss={self.loss_fn}"
+            f"optimizer={self.optimizer.__class__.__name__}, "
+            f"loss={self.loss_fn.__class__.__name__}, "
+            f"verbose={self.verbose}"
             f")"
         )
 
