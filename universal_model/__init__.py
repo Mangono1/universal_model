@@ -33,6 +33,17 @@ from .init.initializers import (
 from .training.history import TrainingHistory
 from .training.trainer import Trainer
 
+from .evaluation.metrics import (
+    mse,
+    mae,
+    rmse,
+)
+
+from .evaluation.evaluator import (
+    Evaluator,
+    EvaluationResult,
+)
+
 
 __all__ = [
     "Module",
@@ -61,4 +72,11 @@ __all__ = [
 
     "TrainingHistory",
     "Trainer",
+
+    "mse",
+    "mae",
+    "rmse",
+
+    "Evaluator",
+    "EvaluationResult",
 ]
