@@ -1,3 +1,10 @@
+﻿"""
+Loss functions for Universal Model Framework.
 """
-Loss functions.
-"""
+
+from .mse import MSELoss
+
+
+__all__ = [
+    "MSELoss",
+]
