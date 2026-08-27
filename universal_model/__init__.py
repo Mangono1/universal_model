@@ -52,6 +52,13 @@ from .state import (
     load_model,
 )
 
+from .checkpoint import (
+    TrainingCheckpoint,
+    create_checkpoint,
+    save_checkpoint,
+    load_checkpoint,
+)
+
 __all__ = [
     "Module",
     "Parameter",
@@ -92,4 +99,9 @@ __all__ = [
     "load_state_dict",
     "save_model",
     "load_model",
+
+    "TrainingCheckpoint",
+    "create_checkpoint",
+    "save_checkpoint",
+    "load_checkpoint",
 ]

@@ -1,13 +1,13 @@
 ﻿"""
 Universal Model Framework - Training Engine.
 
-Supports both direct tensor training and DataLoader-based training.
+Supports:
+    - Direct tensor training
+    - DataLoader training
+    - Continuing training from existing TrainingHistory
+    - Checkpoint resume workflows
 
-Direct:
-    trainer.fit(x, target, epochs=50)
-
-DataLoader:
-    trainer.fit(loader, epochs=50)
+CPU-first and dependency-free.
 """
 
 from ..data.dataloader import DataLoader
@@ -17,7 +17,7 @@ class Trainer:
     """
     Universal training engine.
 
-    Supports:
+    Direct tensors:
 
         trainer.fit(
             inputs,
@@ -25,12 +25,26 @@ class Trainer:
             epochs=10,
         )
 
-    and:
+    DataLoader:
 
         trainer.fit(
-            dataloader,
+            loader,
             epochs=10,
         )
+
+    Resume:
+
+        history = checkpoint.training_history()
+
+        trainer.fit(
+            x,
+            y,
+            epochs=10,
+            history=history,
+        )
+
+    When an existing history is supplied, training continues from
+    the last recorded epoch instead of resetting the epoch counter.
     """
 
     def __init__(
@@ -60,9 +74,13 @@ class Trainer:
         self.loss_fn = loss_fn
         self.verbose = bool(verbose)
 
+    # ---------------------------------------------------------
+    # Internal training
+    # ---------------------------------------------------------
+
     def _train_batch(self, inputs, targets):
         """
-        Execute one optimization step.
+        Execute exactly one optimization step.
         """
 
         self.optimizer.zero_grad()
@@ -80,6 +98,22 @@ class Trainer:
 
         return loss, updated
 
+    def _next_epoch(self, history):
+        """
+        Return the next epoch number.
+
+        Existing history is treated as the authoritative record
+        of previous training progress.
+        """
+
+        if history is None:
+            return 1
+
+        if not history:
+            return 1
+
+        return int(history.epochs[-1]) + 1
+
     def _fit_direct(
         self,
         inputs,
@@ -91,7 +125,11 @@ class Trainer:
         Train using direct input/target tensors.
         """
 
-        for epoch in range(1, epochs + 1):
+        start_epoch = self._next_epoch(history)
+
+        for offset in range(epochs):
+            epoch = start_epoch + offset
+
             loss, updated = self._train_batch(
                 inputs,
                 targets,
@@ -126,7 +164,11 @@ class Trainer:
         Train using a DataLoader.
         """
 
-        for epoch in range(1, epochs + 1):
+        start_epoch = self._next_epoch(history)
+
+        for offset in range(epochs):
+            epoch = start_epoch + offset
+
             epoch_loss = 0.0
             batch_count = 0
             total_updated = 0
@@ -169,6 +211,10 @@ class Trainer:
 
         return history
 
+    # ---------------------------------------------------------
+    # Public training API
+    # ---------------------------------------------------------
+
     def fit(
         self,
         inputs,
@@ -179,22 +225,48 @@ class Trainer:
         """
         Train the model.
 
-        Two supported forms:
+        Parameters
+        ----------
+        inputs:
+            Input Tensor or DataLoader.
 
-        1. Direct tensors:
+        targets:
+            Target Tensor for direct tensor training.
+            Must be omitted when using DataLoader.
+
+        epochs:
+            Number of NEW epochs to train.
+
+        history:
+            Optional existing TrainingHistory.
+
+            If supplied, training continues after the last
+            recorded epoch.
+
+        Examples
+        --------
+
+        Fresh training:
 
             trainer.fit(
                 x,
                 y,
-                epochs=50,
+                epochs=10,
             )
 
-        2. DataLoader:
+        Resume:
+
+            restored_history = checkpoint.training_history()
 
             trainer.fit(
-                loader,
-                epochs=50,
+                x,
+                y,
+                epochs=10,
+                history=restored_history,
             )
+
+        The second example records epochs 11-20 when the
+        restored history already contains epochs 1-10.
         """
 
         if not isinstance(epochs, int):
@@ -211,6 +283,17 @@ class Trainer:
             from .history import TrainingHistory
 
             history = TrainingHistory()
+
+        else:
+            if not hasattr(history, "append"):
+                raise TypeError(
+                    "history must be a TrainingHistory object."
+                )
+
+            if not hasattr(history, "epochs"):
+                raise TypeError(
+                    "history must contain epoch records."
+                )
 
         if isinstance(inputs, DataLoader):
             if targets is not None:
@@ -238,7 +321,11 @@ class Trainer:
             history=history,
         )
 
-    def train_batch(self, inputs, targets):
+    def train_batch(
+        self,
+        inputs,
+        targets,
+    ):
         """
         Train exactly one batch.
         """
@@ -249,9 +336,15 @@ class Trainer:
         )
 
         return {
-            "loss": float(loss.data[0]),
+            "loss": float(
+                loss.data[0]
+            ),
             "updated": updated,
         }
+
+    # ---------------------------------------------------------
+    # Representation
+    # ---------------------------------------------------------
 
     def __repr__(self):
         return (
