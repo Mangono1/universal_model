@@ -59,6 +59,10 @@ from .checkpoint import (
     load_checkpoint,
 )
 
+from .models.config import ModelConfig
+
+__version__ = "0.1.0"
+
 __all__ = [
     "Module",
     "Parameter",
@@ -104,4 +108,6 @@ __all__ = [
     "create_checkpoint",
     "save_checkpoint",
     "load_checkpoint",
+
+    "ModelConfig",
 ]
