@@ -44,6 +44,13 @@ from .evaluation.evaluator import (
     EvaluationResult,
 )
 
+from .state import (
+    StateDict,
+    state_dict,
+    load_state_dict,
+    save_model,
+    load_model,
+)
 
 __all__ = [
     "Module",
@@ -79,4 +86,10 @@ __all__ = [
 
     "Evaluator",
     "EvaluationResult",
+
+    "StateDict",
+    "state_dict",
+    "load_state_dict",
+    "save_model",
+    "load_model",
 ]
