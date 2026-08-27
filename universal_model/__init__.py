@@ -11,6 +11,7 @@ from .core.tensor_ops import TensorOps
 from .layers.linear import Linear
 from .layers.activation import ReLU
 from .layers.sequential import Sequential
+from .layers.embedding import Embedding
 
 from .losses.mse import MSELoss
 
@@ -61,7 +62,7 @@ from .checkpoint import (
 
 from .models.config import ModelConfig
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 __all__ = [
     "Module",
@@ -71,6 +72,7 @@ __all__ = [
     "Linear",
     "ReLU",
     "Sequential",
+    "Embedding",
 
     "MSELoss",
 
@@ -111,4 +113,6 @@ __all__ = [
 
     "ModelConfig",
 ]
+
+
 
