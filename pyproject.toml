@@ -1,13 +1,10 @@
 [build-system]
-requires = [
-    "setuptools>=68",
-    "wheel",
-]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "universal-model"
-version = "0.1.2"
+version = "0.1.4"
 description = "A lightweight, CPU-first universal neural model framework built on CPUTorch"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -58,5 +55,3 @@ exclude = [
     "tests*",
     "examples*",
 ]
-
-
