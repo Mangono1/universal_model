@@ -12,33 +12,35 @@ class MSELoss(Module):
     """
     Mean Squared Error loss.
 
-    Computes:
-
-        loss = mean((prediction - target)^2)
-
-    Both prediction and target must be CPUTorch tensors.
+    loss = mean((prediction - target)^2)
     """
 
-    def __init__(self):
+    def __init__(self, reduction="mean"):
         super().__init__()
 
+        if reduction not in ("mean", "sum"):
+            raise ValueError(
+                "reduction must be 'mean' or 'sum'."
+            )
+
+        self.reduction = reduction
+
     def forward(self, prediction, target):
-        """
-        Calculate mean squared error.
-
-        Args:
-            prediction: CPUTorch Tensor containing model predictions.
-            target: CPUTorch Tensor containing target values.
-
-        Returns:
-            Scalar CPUTorch Tensor containing the MSE loss.
-        """
-
         if prediction is None:
             raise ValueError("prediction must not be None.")
 
         if target is None:
             raise ValueError("target must not be None.")
+
+        prediction = TensorOps.ensure_tensor(
+            prediction,
+            "prediction",
+        )
+
+        target = TensorOps.ensure_tensor(
+            target,
+            "target",
+        )
 
         if prediction.shape != target.shape:
             raise ValueError(
@@ -59,20 +61,23 @@ class MSELoss(Module):
 
         total = TensorOps.sum(squared)
 
+        if self.reduction == "sum":
+            return total
+
         count = TensorOps.size(squared)
 
         if count <= 0:
-            raise ValueError("Cannot calculate MSE for an empty tensor.")
+            raise ValueError(
+                "Cannot calculate MSE for an empty tensor."
+            )
 
-        loss = TensorOps.multiply_scalar(
+        return TensorOps.multiply_scalar(
             total,
             1.0 / float(count),
         )
 
-        return loss
-
     def __repr__(self):
-        return "MSELoss()"
+        return f"MSELoss(reduction='{self.reduction}')"
 
 
 __all__ = [
