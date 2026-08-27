@@ -4,7 +4,7 @@ Universal Model Framework.
 A lightweight CPU-first neural network framework.
 """
 
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 
 from .core.module import Module
 from .core.parameter import Parameter
@@ -114,3 +114,4 @@ __all__ = [
     "ModelConfig",
     "Embedding",
 ]
+
